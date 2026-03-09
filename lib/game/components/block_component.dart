@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import 'package:flame/events.dart';
@@ -12,13 +13,11 @@ class BlockComponent extends PositionComponent with DragCallbacks {
   final BlockBashGame gameRef;
   late Vector2 originalBlockPosition;
   late Vector2 dragOffset;
-  static const double fingerOffsetFactor = 2.8;
   late Vector2 fingerTarget;
   late Vector2 liftOffset;
-
-  static const double liftHeightFactor = 1.2;
-  static const double magnetDistance = 32;
-
+  Vector2? lockedSnap;
+  static const double liftHeightFactor = 2.6;
+  late Vector2 originalScale;
   Vector2 get visualTopLeft {
     return position - Vector2(visualWidth / 2, visualHeight / 2);
   }
@@ -44,40 +43,25 @@ class BlockComponent extends PositionComponent with DragCallbacks {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    //gameRef.deferSpawnLayout(this);
     size = Vector2(pixelWidth, pixelHeight);
-    //originalBlockPosition = position.clone();
+    originalScale = scale.clone();
+    add(RectangleHitbox());
   }
 
   void removeAllEffects() {
     children.whereType<Effect>().forEach((e) => e.removeFromParent());
   }
 
-  /*@override
-  void onDragStart(DragStartEvent event) {
-    super.onDragStart(event);
-
-    removeAllEffects();
-    isDragging = true;
-
-    // chỉ offset theo Y
-    dragOffset = Vector2(
-      0,
-      -visualHeight * fingerOffsetFactor,
-    );
-
-    dragTarget = position.clone();
-    scale = Vector2.all(1.0);
-  }*/
   @override
   void onDragStart(DragStartEvent event) {
     super.onDragStart(event);
 
     removeAllEffects();
     isDragging = true;
+    dragOffset = position - event.canvasPosition;
 
-    // vị trí tay điều khiển
-    fingerTarget = position.clone();
+    fingerTarget = event.canvasPosition.clone();
+    dragTarget = position.clone();
 
     // nâng block lên để không bị che
     liftOffset = Vector2(
@@ -144,60 +128,9 @@ class BlockComponent extends PositionComponent with DragCallbacks {
       }
     }
   }
-
-  /*@override
-  void onDragUpdate(DragUpdateEvent event) {
-    super.onDragUpdate(event);
-
-    // cập nhật target
-    dragTarget += event.localDelta;
-
-    final gridPos =
-    gameRef.board.globalToGrid(visualTopLeft);
-
-    if (gridPos != null &&
-        gameRef.board.boardModel.canPlace(
-          block,
-          gridPos.x.toInt(),
-          gridPos.y.toInt(),
-        )) {
-      gameRef.board.preview(block, gridPos);
-      lastValidGridPos = gridPos.clone();
-    } else {
-      gameRef.board.clearPreview();
-      lastValidGridPos = null;
-    }
-  }*/
-  /*@override
-  void onDragUpdate(DragUpdateEvent event) {
-    super.onDragUpdate(event);
-
-    dragTarget += event.localDelta;
-    final offsetTarget = dragTarget + dragOffset;
-
-    final gridPos =
-    gameRef.board.globalToGrid(
-      offsetTarget - Vector2(visualWidth / 2, visualHeight / 2),
-    );
-
-    if (gridPos != null &&
-        gameRef.board.boardModel.canPlace(
-          block,
-          gridPos.x.toInt(),
-          gridPos.y.toInt(),
-        )) {
-      gameRef.board.preview(block, gridPos);
-      lastValidGridPos = gridPos.clone();
-    } else {
-      gameRef.board.clearPreview();
-      lastValidGridPos = null;
-    }
-  }*/
   @override
   void onDragUpdate(DragUpdateEvent event) {
     super.onDragUpdate(event);
-
-    // chỉ update vị trí tay
     fingerTarget += event.localDelta;
   }
   @override
@@ -213,8 +146,13 @@ class BlockComponent extends PositionComponent with DragCallbacks {
           lastValidGridPos!.x.toInt(),
           lastValidGridPos!.y.toInt(),
         );
-
-        add(
+        // đặt block ngay vị trí snap
+        position = targetTopLeft +
+            Vector2(
+              block.width * cellSize / 2,
+              block.height * cellSize / 2,
+            );
+        /*add(
           MoveEffect.to(
             targetTopLeft +
                 Vector2(visualWidth / 2, visualHeight / 2),
@@ -223,7 +161,7 @@ class BlockComponent extends PositionComponent with DragCallbacks {
               curve: Curves.easeOutCubic,
             ),
           ),
-        );
+        );*/
 
         gameRef.onBlockPlaced(
           this,
@@ -231,6 +169,7 @@ class BlockComponent extends PositionComponent with DragCallbacks {
           lastValidGridPos!.y.toInt(),
         );
         isPlaced = true;
+        scale = originalScale;
       } else {
         // bay về chỗ cũ
         addAll([
@@ -242,7 +181,7 @@ class BlockComponent extends PositionComponent with DragCallbacks {
             ),
           ),
           ScaleEffect.to(
-            Vector2.all(0.4), // scale spawn ban đầu
+            originalScale, // scale spawn ban đầu
             EffectController(
               duration: 0.15,
               curve: Curves.easeOut,
@@ -253,6 +192,7 @@ class BlockComponent extends PositionComponent with DragCallbacks {
         print("current position: $position");
       }
       dragTarget = position.clone();
+      fingerTarget = position.clone();
       lastValidGridPos = null;
       gameRef.board.clearPreview();
     }
@@ -261,69 +201,55 @@ class BlockComponent extends PositionComponent with DragCallbacks {
     super.update(dt);
     if (!isDragging) return;
 
-    final visualTarget = fingerTarget + liftOffset;
-
+    // final visualTarget = fingerTarget + liftOffset;
+    final visualTarget = fingerTarget + dragOffset + liftOffset;
     final followT = 1 - math.pow(0.00001, dt).toDouble();
 
-    if (!gameRef.board.isBlockOverBoard(position, visualWidth, visualHeight)) {
+    if (!gameRef.board.isBlockOverBoard(visualTarget, visualWidth, visualHeight)) {
       position.lerp(visualTarget, followT);
       lastValidGridPos = null;
       gameRef.board.clearPreview();
       return;
     }
 
-    final dragDirection = fingerTarget - position;
-
-    final nearest = gameRef.board.findBestSnapPosition(
-      block,
-      position,
-      dragDirection,
+    final nearest = gameRef.board.globalToGrid(
+      visualTarget - Vector2(
+        (block.width - 1) * cellSize / 2,
+        (block.height - 1) * cellSize / 2,
+      ),
     );
+    const double maxMagnetDistance =38;
 
-    if (nearest == null) {
-      position.lerp(visualTarget, followT);
-      lastValidGridPos = null;
-      gameRef.board.clearPreview();
-      return;
-    }
-
-    final snapCenter =
-        gameRef.board.gridToGlobalTopLeft(
+    if (nearest != null &&
+        gameRef.board.boardModel.canPlace(
+          block,
           nearest.x.toInt(),
           nearest.y.toInt(),
-        ) +
-            Vector2(
-              (block.width - 1) * cellSize / 2,
-              (block.height - 1) * cellSize / 2,
-            );
+        )) {
 
-    final distance = position.distanceTo(snapCenter);
+      final snapCenter =
+          gameRef.board.gridToGlobalTopLeft(
+            nearest.x.toInt(),
+            nearest.y.toInt(),
+          ) +
+              Vector2(
+                block.width * cellSize / 2,
+                block.height * cellSize / 2,
+              );
 
-    const double maxMagnetDistance = 140;
+      final distance = visualTarget.distanceTo(snapCenter);
+      position.lerp(visualTarget, followT);
 
-    if (distance < maxMagnetDistance) {
+      if (distance < maxMagnetDistance) {
+        position.lerp(snapCenter, 0.18);
 
-      final strength =
-      (1 - (distance / maxMagnetDistance)).clamp(0, 1);
+        lastValidGridPos = nearest.clone();
+        gameRef.board.preview(block, nearest);
 
-      final snapT = 0.08 + strength * 0.45;
-
-      // 👇 giảm follow khi snap mạnh
-      final adjustedFollowT = followT * (1 - strength * 0.6);
-
-      // follow nhẹ
-      position.lerp(visualTarget, adjustedFollowT);
-
-      // snap
-      position.lerp(snapCenter, snapT);
-
-      // khóa cứng khi đủ gần (chống rung tuyệt đối)
-      if (distance < 6) {
-        position.setFrom(snapCenter);
+      } else {
+        lastValidGridPos = null;
+        gameRef.board.clearPreview();
       }
-
-      lastValidGridPos = nearest.clone();
-      gameRef.board.preview(block, nearest);
 
     } else {
       position.lerp(visualTarget, followT);
@@ -331,77 +257,4 @@ class BlockComponent extends PositionComponent with DragCallbacks {
       gameRef.board.clearPreview();
     }
   }
-  /*@override
-  void update(double dt) {
-    super.update(dt);
-    if (!isDragging) return;
-
-    // =========================
-    // 1️⃣ Smooth follow ngón tay
-    // =========================
-    final visualTarget = fingerTarget + liftOffset;
-
-    final followT = 1 - math.pow(0.00001, dt).toDouble();
-    position.lerp(visualTarget, followT);
-
-    // =========================
-    // 2️⃣ Grid detection
-    // =========================
-    final topLeft =
-        position - Vector2(visualWidth / 2, visualHeight / 2);
-
-    final gridPos = gameRef.board.globalToGrid(topLeft);
-
-    if (gridPos != null &&
-        gameRef.board.boardModel.canPlace(
-          block,
-          gridPos.x.toInt(),
-          gridPos.y.toInt(),
-        )) {
-
-      final snapCenter =
-          gameRef.board.gridToGlobalTopLeft(
-            gridPos.x.toInt(),
-            gridPos.y.toInt(),
-          ) +
-              Vector2(visualWidth / 2, visualHeight / 2);
-
-      final distance = position.distanceTo(snapCenter);
-
-      // =========================
-      // 3️⃣ Magnet nhẹ giống Block Blast
-      // =========================
-      if (distance < magnetDistance) {
-        position.lerp(snapCenter, 0.22);
-        lastValidGridPos = gridPos.clone();
-        gameRef.board.preview(block, gridPos);
-      } else {
-        lastValidGridPos = null;
-        gameRef.board.clearPreview();
-      }
-    } else {
-      lastValidGridPos = null;
-      gameRef.board.clearPreview();
-    }
-  }*/
- /* @override
-  void update(double dt) {
-    super.update(dt);
-    if (!isDragging) return;
-
-    final followT = 1 - math.pow(0.001, dt).toDouble();
-
-    position.lerp(dragTarget + dragOffset, followT);
-
-    if (lastValidGridPos != null) {
-      final snapPos =
-          gameRef.board.gridToGlobalTopLeft(
-            lastValidGridPos!.x.toInt(),
-            lastValidGridPos!.y.toInt(),
-          ) +
-              Vector2(visualWidth / 2, visualHeight / 2);
-
-      position.lerp(snapPos, 0.12);
-    }
-  }*/
 }

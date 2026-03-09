@@ -106,28 +106,84 @@ class BoardComponent extends PositionComponent {
     }
 
     // 2️⃣ 🔥 Highlight rows / cols (VẼ SAU GRID)
-    final highlightPaint =
-    Paint()..color = palette.highlight.withValues(alpha: 0.25);
+    /*final highlightPaint = Paint()..color = palette.highlight.withValues(alpha: 0.25);
 
     for (final y in highlightRows) {
       canvas.drawRect(
         Rect.fromLTWH(0, y * s, size.x, s),
         highlightPaint,
       );
-    }
+    }*/
+    for (final y in highlightRows) {
 
-    for (final x in highlightCols) {
+      final rect = Rect.fromLTWH(0, y * s, size.x, s);
+
+      // glow background
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..color = palette.highlight.withValues(alpha: 0.15),
+      );
+
+      // top glow
+      canvas.drawLine(
+        Offset(rect.left, rect.top),
+        Offset(rect.right, rect.top),
+        Paint()
+          ..strokeWidth = 3
+          ..color = palette.highlight.withValues(alpha: 0.7),
+      );
+
+      // bottom glow
+      canvas.drawLine(
+        Offset(rect.left, rect.bottom),
+        Offset(rect.right, rect.bottom),
+        Paint()
+          ..strokeWidth = 3
+          ..color = palette.highlight.withValues(alpha: 0.7),
+      );
+    }
+    /*for (final x in highlightCols) {
       canvas.drawRect(
         Rect.fromLTWH(x * s, 0, s, size.y),
         highlightPaint,
       );
-    }
+    }*/
+    for (final x in highlightCols) {
 
+      final rect = Rect.fromLTWH(x * s, 0, s, size.y);
+
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..color = palette.highlight.withValues(alpha: 0.15),
+      );
+
+      canvas.drawLine(
+        Offset(rect.left, rect.top),
+        Offset(rect.left, rect.bottom),
+        Paint()
+          ..strokeWidth = 3
+          ..color = palette.highlight.withValues(alpha: 0.7),
+      );
+
+      canvas.drawLine(
+        Offset(rect.right, rect.top),
+        Offset(rect.right, rect.bottom),
+        Paint()
+          ..strokeWidth = 3
+          ..color = palette.highlight.withValues(alpha: 0.7),
+      );
+    }
     // 3️⃣ Preview cells (ghost block)
     if (previewBlockColor != null) {
       final base = previewBlockColor!;
-      final ghostColor = base.withValues(alpha: 0.55);
+      //final ghostColor = base.withValues(alpha: 0.55);
+      final hsl = HSLColor.fromColor(base);
 
+      final ghostColor = hsl
+          .withLightness((hsl.lightness + 0.25).clamp(0, 1))
+          .toColor();
       for (final cell in previewCells) {
         final rect = Rect.fromLTWH(
           cell.x * s,
@@ -143,11 +199,11 @@ class BoardComponent extends PositionComponent {
 
         // viền rất nhẹ (tuỳ chọn)
         canvas.drawRRect(
-          RRect.fromRectAndRadius(rect, const Radius.circular(4)),
+          RRect.fromRectAndRadius(rect.deflate(1), const Radius.circular(4)),
           Paint()
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 1
-            ..color = Colors.white.withValues(alpha: 0.18),
+            ..strokeWidth = 1.5
+            ..color = Colors.white.withValues(alpha: 0.38),
         );
       }
     }
@@ -215,24 +271,6 @@ class BoardComponent extends PositionComponent {
 
     final rightRect = Rect.fromLTWH(px + s - shadowSize, py, shadowSize, s,);
 
-    // mặt chính
-
-    /*final mainPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          lightColor,
-          blockColor,
-          darkColor,
-        ],
-        stops: const [0.0, 0.4, 1.0],
-      ).createShader(mainRect);
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(mainRect, const Radius.circular(2)),
-      mainPaint,
-    );*/
     canvas.drawRRect(
       RRect.fromRectAndRadius(mainRect, const Radius.circular(2)),
       Paint()..color = blockColor,
@@ -246,7 +284,7 @@ class BoardComponent extends PositionComponent {
         end: Alignment.bottomCenter,
         colors: [
           lightColor,
-          lightColor.withOpacity(0.0),
+          lightColor.withValues(alpha: 0.0),
         ],
       ).createShader(topRect);
     canvas.drawRect(topRect, topPaint);
@@ -260,7 +298,7 @@ class BoardComponent extends PositionComponent {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          darkColor.withOpacity(0.0),
+          darkColor.withValues(alpha: 0.0),
           darkColor,
         ],
       ).createShader(bottomRect);
@@ -373,8 +411,8 @@ class BoardComponent extends PositionComponent {
   Vector2 gridToGlobalTopLeft(int gx, int gy) {
     return position +
         Vector2(
-          gx * cellSize + cellSize / 2,
-          gy * cellSize + cellSize / 2,
+          gx * cellSize,
+          gy * cellSize,
         );
   }
 
@@ -388,13 +426,7 @@ class BoardComponent extends PositionComponent {
 
     // FIX: Không return null khi gần mép
 
-    final rawGrid = globalToGrid(
-      blockCenter -
-          Vector2(
-            block.width * cellSize / 2,
-            block.height * cellSize / 2,
-          ),
-    );
+    final rawGrid = globalToGrid(blockCenter);
 
     int cgx = rawGrid?.x.toInt() ?? 0;
     int cgy = rawGrid?.y.toInt() ?? 0;
