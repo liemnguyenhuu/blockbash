@@ -474,6 +474,36 @@ class BoardComponent extends PositionComponent {
 
     return bestPos;
   }
+  Vector2? findNearestValidGrid(GameBlock block, Vector2 fromGrid) {
+    const int searchRadius = 6;
+
+    double bestDist = double.infinity;
+    Vector2? best;
+
+    for (int y = (fromGrid.y - searchRadius).floor();
+    y <= (fromGrid.y + searchRadius).ceil();
+    y++) {
+
+      for (int x = (fromGrid.x - searchRadius).floor();
+      x <= (fromGrid.x + searchRadius).ceil();
+      x++) {
+
+        if (x < 0 || y < 0 || x >= gridSize || y >= gridSize) continue;
+
+        if (!boardModel.canPlace(block, x, y)) continue;
+
+        final dist =
+        Vector2(x.toDouble(), y.toDouble()).distanceTo(fromGrid);
+
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = Vector2(x.toDouble(), y.toDouble());
+        }
+      }
+    }
+
+    return best;
+  }
 }
 
 class AnimatedCell {

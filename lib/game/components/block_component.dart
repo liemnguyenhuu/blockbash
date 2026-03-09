@@ -152,17 +152,6 @@ class BlockComponent extends PositionComponent with DragCallbacks {
               block.width * cellSize / 2,
               block.height * cellSize / 2,
             );
-        /*add(
-          MoveEffect.to(
-            targetTopLeft +
-                Vector2(visualWidth / 2, visualHeight / 2),
-            EffectController(
-              duration: 0.12,
-              curve: Curves.easeOutCubic,
-            ),
-          ),
-        );*/
-
         gameRef.onBlockPlaced(
           this,
           lastValidGridPos!.x.toInt(),
@@ -219,8 +208,56 @@ class BlockComponent extends PositionComponent with DragCallbacks {
       ),
     );
     const double maxMagnetDistance =38;
+    Vector2? targetGrid = nearest;
 
-    if (nearest != null &&
+    if (targetGrid != null &&
+        !gameRef.board.boardModel.canPlace(
+          block,
+          targetGrid.x.toInt(),
+          targetGrid.y.toInt(),
+        )) {
+
+      // tìm vị trí hợp lệ gần nhất
+      targetGrid = gameRef.board.findNearestValidGrid(block, targetGrid);
+    }
+
+    if (targetGrid != null &&
+        gameRef.board.boardModel.canPlace(
+          block,
+          targetGrid.x.toInt(),
+          targetGrid.y.toInt(),
+        )) {
+
+      final snapCenter =
+          gameRef.board.gridToGlobalTopLeft(
+            targetGrid.x.toInt(),
+            targetGrid.y.toInt(),
+          ) +
+              Vector2(
+                block.width * cellSize / 2,
+                block.height * cellSize / 2,
+              );
+
+      final distance = visualTarget.distanceTo(snapCenter);
+
+      position.lerp(visualTarget, followT);
+
+      if (distance < maxMagnetDistance) {
+        position.lerp(snapCenter, 0.18);
+
+        lastValidGridPos = targetGrid.clone();
+        gameRef.board.preview(block, targetGrid);
+      } else {
+        lastValidGridPos = null;
+        gameRef.board.clearPreview();
+      }
+
+    } else {
+      position.lerp(visualTarget, followT);
+      lastValidGridPos = null;
+      gameRef.board.clearPreview();
+    }
+    /*if (nearest != null &&
         gameRef.board.boardModel.canPlace(
           block,
           nearest.x.toInt(),
@@ -255,6 +292,6 @@ class BlockComponent extends PositionComponent with DragCallbacks {
       position.lerp(visualTarget, followT);
       lastValidGridPos = null;
       gameRef.board.clearPreview();
-    }
+    }*/
   }
 }

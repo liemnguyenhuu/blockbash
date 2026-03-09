@@ -38,12 +38,6 @@ class BlockBashGame extends FlameGame {
     palette = LevelPalette.byLevel(level.value);// nếu bạn muốn sync lại theo level
   }
 
-  /*@override
-  Color backgroundColor() {
-    palette ??= LevelPalette.byLevel(level.value);
-    return palette.outerbackground;
-  }*/
-
   @override
   void onRemove() {
     hudHeightNotifier.dispose();
@@ -112,22 +106,7 @@ class BlockBashGame extends FlameGame {
       spawnBlocks(count: 3);
     }
   }
-  /*void deferSpawnLayout(BlockComponent block) {
-    add(block);
 
-    final boardBottom = board.position.y + board.size.y;
-    final spawnY =
-        boardBottom + 128.0 - block.pixelHeight * block.scale.y;
-
-    final spawnX = block.position.x;
-    // hoặc tính layout hàng block nếu bạn có
-
-    final spawnPos = Vector2(spawnX, spawnY);
-
-    block.position = spawnPos;
-    block.originalBlockPosition = spawnPos.clone();
-    block.dragTarget = spawnPos.clone();
-  }*/
   void applyScore(ScoreResult result) {
     score.value += result.total;
     combo.value = scoreManager.combo;
@@ -246,63 +225,6 @@ class BlockBashGame extends FlameGame {
     print("layout blockY  = $blockSpawnY");
   }
 
-  /*void layoutBoard() {
-    if (hudHeight <= 0) return;
-
-    final double hh = hudHeight;
-    const double sidePadding = 20.0;
-    const double boardTopSpacing = 12.0;
-
-    final double bottomReserved = 180;
-
-    final double availableWidth = size.x - sidePadding * 2;
-    final double availableHeight =
-        size.y - hh - sidePadding - bottomReserved;
-
-    final double finalSize =
-    math.min(availableWidth, availableHeight);
-
-    board.setPixelSize(finalSize.clamp(50.0, size.x));
-
-    if (board.size.x == 0 || board.size.y == 0) return;
-
-    // 📌 đặt board
-    board.position = Vector2(
-      (size.x - board.size.x) / 2,
-      hh + boardTopSpacing,
-    );
-
-    // 📌 block luôn nằm DƯỚI board
-    final double blockBottomY =
-        board.position.y + board.size.y + 128.0;
-
-    const int count = 3;
-    int i = 0;
-
-    final blocks =
-    children.whereType<BlockComponent>().where((b) => !b.isPlaced);
-
-    for (final bc in blocks) {
-
-      final double screenLeft = 8.0;
-      final double screenRight = size.x - 8.0;
-      final double usableWidth = screenRight - screenLeft;
-      final double slotWidth = usableWidth / count;
-
-      final double centerX =
-          screenLeft + slotWidth * (i + 0.5);
-
-      double x = centerX - bc.size.x / 2;
-      x = clampBlockX(bc, x);
-
-      bc.position = Vector2(x, blockBottomY);
-
-      bc.originalPosition = bc.position.clone();
-      bc.dragTarget = bc.position.clone();
-
-      i++;
-    }
-  }*/
   List<BlockComponent> spawnBlocks({int count = 3}) {
     blockSlotCount = count;
 
@@ -310,6 +232,7 @@ class BlockBashGame extends FlameGame {
     BlockGenerator.generateSet(
       count: count,
       score: score.value,
+      board: board.boardModel,
     );
 
     const double spawnScale = 0.6;
@@ -353,53 +276,6 @@ class BlockBashGame extends FlameGame {
     return created;
   }
 
-  /*List<BlockComponent> spawnBlocks({int count = 3}) {
-    blockSlotCount = count;
-    final next =
-    BlockGenerator.generateSet(count: count, score: score.value);
-
-    const double spawnScale = 0.4;
-    final created = <BlockComponent>[];
-
-    for (int i = 0; i < next.length; i++) {
-      final block = next[i];
-
-      final bc = BlockComponent(
-        block: block,
-        gameRef: this,
-      );
-
-      bc.scale = Vector2.all(spawnScale);
-      bc.isPlaced = false;
-
-      final double centerX =
-          blockScreenLeft + blockSlotWidth * (i + 0.5);
-
-      final spawnPosition = Vector2(centerX, blockSpawnY);
-
-      bc.position = spawnPosition;
-      bc.originalBlockPosition = bc.position.clone();
-      bc.dragTarget = bc.position.clone();
-
-      // 🎬 animation spawn nhẹ
-      bc.position.y += 24;
-      bc.add(
-        MoveEffect.by(
-          Vector2(0, -24),
-          EffectController(
-            duration: 0.25,
-            curve: Curves.easeOut,
-          ),
-        ),
-      );
-
-      add(bc);
-      created.add(bc);
-    }
-
-    return created;
-  }*/
-
   bool isGameOver() {
     final boardModel = board.boardModel;
     final blocks = availableBlocks;// Tìm 3 block hiện có ở dưới màn hình (block chưa đặt)
@@ -432,7 +308,7 @@ class BlockBashGame extends FlameGame {
   }
 
   void updateLevel() {
-    int newLevel = (score.value ~/ 300) + 1; // Level = 1,2,3,...
+    int newLevel = (score.value ~/ 6000) + 1; // Level = 1,2,3,...
     if (newLevel != level.value) {
       level.value = newLevel;
       palette = LevelPalette.byLevel(level.value);

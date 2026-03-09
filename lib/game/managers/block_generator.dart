@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../../models/board.dart';
 import '../../models/game_block.dart';
 
 /// Private helper: entry cho 1 shape
@@ -83,6 +84,10 @@ class BlockGenerator {
     [0, 1],
     [1, 1],
   ];
+  static const List<List<int>> lSmallC = [
+    [1, 1],
+    [0, 1],
+  ];
 
   static const List<List<int>> zSmallA = [
     [0, 1],
@@ -113,7 +118,14 @@ class BlockGenerator {
     [0, 0, 1],
     [1, 1, 1],
   ];
-
+  static const List<List<int>> l4c = [
+    [1, 1, 1],
+    [0, 0, 1],
+  ];
+  static const List<List<int>> l4d = [
+    [1, 1, 1],
+    [1, 0, 0],
+  ];
   static const List<List<int>> z3 = [
     [1, 1, 0],
     [0, 1, 1],
@@ -128,7 +140,39 @@ class BlockGenerator {
     [1, 0, 1],
     [1, 1, 1],
   ];
-
+  static const List<List<int>> _uShape = [
+    [1, 1, 1],
+    [1, 0, 1],
+  ];
+  static const List<List<int>> recShapeA = [
+    [1, 1, 1],
+    [1, 1, 1],
+  ];
+  static const List<List<int>> recShapeB= [
+    [1, 1],
+    [1, 1],
+    [1, 1],
+  ];
+  static const List<List<int>> fShapeA= [
+    [0, 1],
+    [1, 1],
+    [0, 1],
+  ];
+  static const List<List<int>> fShapeB= [
+    [1, 0],
+    [1, 1],
+    [1, 0],
+  ];
+  static const List<List<int>> shape4A= [
+    [0, 1],
+    [1, 1],
+    [1, 0],
+  ];
+  static const List<List<int>> shape4B= [
+    [1, 0],
+    [1, 1],
+    [0, 1],
+  ];
   static const List<List<int>> stair = [
     [1, 0, 0],
     [1, 1, 0],
@@ -189,30 +233,39 @@ class BlockGenerator {
     const _ShapeEntry(square2, 0, 40),
     const _ShapeEntry(line3H, 0, 30),
     const _ShapeEntry(line3V, 0, 30),
-    const _ShapeEntry(lSmallA, 0, 20),
-    const _ShapeEntry(lSmallB, 0, 20),
-    const _ShapeEntry(zSmallA, 0, 20),
-    const _ShapeEntry(zSmallB, 0, 20),
-    const _ShapeEntry(t3, 0, 10),
-    const _ShapeEntry(t3b, 0, 10),
+    const _ShapeEntry(lSmallA, 0, 15),
+    const _ShapeEntry(lSmallB, 0, 15),
+    const _ShapeEntry(lSmallC, 0, 15),
+    const _ShapeEntry(zSmallA, 0, 10),
+    const _ShapeEntry(zSmallB, 0, 10),
+    const _ShapeEntry(t3, 0, 6),
+    const _ShapeEntry(t3b, 0, 6),
 
     // MEDIUM (tier 1)
-    const _ShapeEntry(l4a, 1, 18),
-    const _ShapeEntry(l4b, 1, 18),
+    const _ShapeEntry(l4a, 1, 15),
+    const _ShapeEntry(l4b, 1, 15),
+    const _ShapeEntry(l4c, 1, 15),
+    const _ShapeEntry(l4d, 1, 15),
     const _ShapeEntry(z3, 1, 10),
     const _ShapeEntry(s3, 1, 10),
-    const _ShapeEntry(uShape, 1, 5),
-    const _ShapeEntry(stair, 1, 5),
-    const _ShapeEntry(square3, 1, 5),
+    const _ShapeEntry(recShapeA, 1, 6),
+    const _ShapeEntry(uShape, 1, 6),
+    const _ShapeEntry(_uShape, 1, 6),
+    const _ShapeEntry(fShapeA, 1, 5),
+    const _ShapeEntry(fShapeB, 1, 5),
+    const _ShapeEntry(shape4A, 1, 4),
+    const _ShapeEntry(shape4B, 1, 4),
 
     // HARD (tier 2)
-    const _ShapeEntry(line4H, 2, 12),
-    const _ShapeEntry(line4V, 2, 12),
+    const _ShapeEntry(line4H, 2, 8),
+    const _ShapeEntry(line4V, 2, 8),
     const _ShapeEntry(line5H, 2, 6),
     const _ShapeEntry(line5V, 2, 6),
-    const _ShapeEntry(bigL3x3, 2, 3),
-    const _ShapeEntry(bigZ, 2, 3),
-    const _ShapeEntry(cross5, 2, 3),
+    const _ShapeEntry(bigL3x3, 2, 2),
+    const _ShapeEntry(bigZ, 2, 2),
+    const _ShapeEntry(cross5, 2, 2),
+    const _ShapeEntry(stair, 1, 2),
+    const _ShapeEntry(square3, 1, 1),
   ];
 
   // ======================================================
@@ -220,7 +273,7 @@ class BlockGenerator {
   // ======================================================
   static double _factor(final int score) {
     const double start = 6000.0;
-    const double full = 8000.0;
+    const double full = 18000.0;
 
     if (score <= start) {
       return 0.0;
@@ -232,6 +285,7 @@ class BlockGenerator {
   }
 
   static _ShapeEntry _pickShapeByScore(final int score) {
+    const double start = 6000.0;
     final double df = _factor(score);
 
     final double easyMult = (1.0 - df * 0.85).clamp(0.1, 1.0);
@@ -242,6 +296,9 @@ class BlockGenerator {
     final Map<_ShapeEntry, double> weighted = <_ShapeEntry, double>{};
 
     for (final _ShapeEntry s in _shapes) {
+      if (score <= start && s.tier == 2) {
+        continue;
+      }
       final double mult = (s.tier == 0) ? easyMult : (s.tier == 1
           ? medMult
           : hardMult);
@@ -267,50 +324,67 @@ class BlockGenerator {
     return _shapes.last;
   }
 
+
   static GameBlock randomBlock({required int score}) {
     final _ShapeEntry entry = _pickShapeByScore(score);
-    final List<List<int>> shape = entry.shape;
 
-    // dùng tier từ entry (không cần đếm ô nữa)
-    final int tier = entry.tier;
-
-    final Color color = _colorForTier(tier);
-    return GameBlock(shape: shape, color: color);
+    return GameBlock(
+      shape: entry.shape,
+      color: _colorForTier(entry.tier),
+    );
   }
+  static GameBlock randomTier(int tier) {
+    final List<_ShapeEntry> candidates =
+    _shapes.where((s) => s.tier == tier).toList();
 
-  static bool _sameShape(List<List<int>> a, List<List<int>> b) {
-    if (a.length != b.length) return false;
-    for (int i = 0; i < a.length; i++) {
-      if (a[i].length != b[i].length) return false;
-      for (int j = 0; j < a[i].length; j++) {
-        if (a[i][j] != b[i][j]) return false;
-      }
+    if (candidates.isEmpty) {
+      return randomBlock(score: 0); // fallback an toàn
     }
-    return true;
+
+    final _ShapeEntry entry =
+    candidates[_random.nextInt(candidates.length)];
+
+    return GameBlock(
+      shape: entry.shape,
+      color: _colorForTier(entry.tier),
+    );
   }
 
   static List<GameBlock> generateSet({
-    final int count = 3,
-    required final int score,
+    int count = 3,
+    required int score,
+    required Board board,
   }) {
-    final List<GameBlock> result = <GameBlock>[];
-    const int maxRetry = 20;
+    const int maxRetry = 30;
 
-    for (int i = 0; i < count; i++) {
-      GameBlock block;
-      int retry = 0;
-
-      do {
-        block = randomBlock(score: score);
-        retry++;
-      } while (
-      retry < maxRetry &&
-          result.any((b) => _sameShape(b.shape, block.shape))
+    for (int i = 0; i < maxRetry; i++) {
+      final blocks = List.generate(
+        count,
+            (_) => randomBlock(score: score),
       );
 
-      result.add(block);
+      if (blocks.any((b) => board.canPlaceAnywhere(b))) {
+        return blocks;
+      }
     }
 
-    return result;
+    // fallback nếu retry thất bại
+    return [
+      randomTier(0),
+      randomTier(0),
+      randomTier(1),
+    ];
   }
+  /*static List<GameBlock> generateSet({
+    final int count = 3,
+    required int score,
+  }) {
+    final List<GameBlock> result = [
+      randomTier(0),        // easy
+      randomTier(1),        // medium
+      randomBlock(score: score), // difficulty scaling
+    ];
+    result.shuffle(_random);
+    return result;
+  }*/
 }
